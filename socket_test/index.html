@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test</title>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Connection Test</h1>
+    <p id="status">Connecting...</p>
+    <script>
+        // Connect to the Flask Socket.IO server
+        const socket = io("http://192.168.0.6:3000"); // Update with your Flask server address if not localhost
+
+        // Handle connection success
+        socket.on("connect", () => {
+            document.getElementById("status").innerText = "Connected!";
+            console.log("Connected to server");
+        });
+
+        // Handle welcome event from server
+        socket.on("welcome", (data) => {
+            console.log("Welcome message from server:", data);
+            alert(`Server says: ${data.data}`);
+        });
+
+        // Handle connection error
+        socket.on("connect_error", (err) => {
+            console.error("Connection error:", err);
+            document.getElementById("status").innerText = "Connection Error!";
+        });
+
+        // Handle disconnection
+        socket.on("disconnect", () => {
+            console.log("Disconnected from server");
+            document.getElementById("status").innerText = "Disconnected!";
+        });
+    </script>
+</body>
+</html>

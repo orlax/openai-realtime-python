@@ -69,6 +69,7 @@ class RealtimeKitAgent:
 
     _client_tool_futures: dict[str, asyncio.Future[ClientToolCallResponse]]
 
+
     @classmethod
     async def setup_and_run_agent(
         cls,
@@ -77,7 +78,10 @@ class RealtimeKitAgent:
         options: RtcOptions,
         inference_config: InferenceConfig,
         tools: ToolContext | None,
+        on_message: Any = None,  # Accept on_message callback
     ) -> None:
+        
+
         channel = engine.create_channel(options)
         await channel.connect()
 
@@ -117,6 +121,7 @@ class RealtimeKitAgent:
                     connection=connection,
                     tools=tools,
                     channel=channel,
+                    on_message=on_message
                 )
                 await agent.run()
 
@@ -130,6 +135,7 @@ class RealtimeKitAgent:
         connection: RealtimeApiConnection,
         tools: ToolContext | None,
         channel: Channel,
+        on_message: Any = None,  # Accept on_message callback
     ) -> None:
         self.connection = connection
         self.tools = tools
@@ -137,6 +143,18 @@ class RealtimeKitAgent:
         self.channel = channel
         self.subscribe_user = None
         self.write_pcm = os.environ.get("WRITE_AGENT_PCM", "false") == "true"
+        self.on_message = on_message  # Store the callback
+
+         # Bind queues to the current event loop
+        current_loop = asyncio.get_event_loop()
+        if(current_loop is None):
+            current_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(current_loop)
+
+        self.audio_queue = asyncio.Queue()
+        self.message_queue = asyncio.Queue()
+        self.message_done_queue = asyncio.Queue()
+        
         logger.info(f"Write PCM: {self.write_pcm}")
 
     async def run(self) -> None:
@@ -256,6 +274,8 @@ class RealtimeKitAgent:
                             message=to_json(message), msg_id=message.item_id
                         )
                     ))
+                    if(self.on_message is not None):
+                        self.on_message(message) #RELAY TRANSCRIPTION TO CALLBACK
 
                 case ResponseAudioTranscriptDone():
                     logger.info(f"Text message done: {message=}")
@@ -264,6 +284,7 @@ class RealtimeKitAgent:
                             message=to_json(message), msg_id=message.item_id
                         )
                     ))
+                    
                 case InputAudioBufferSpeechStarted():
                     await self.channel.clear_sender_audio_buffer()
                     # clear the audio queue so audio stops playing

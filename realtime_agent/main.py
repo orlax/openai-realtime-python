@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 from multiprocessing import Process
+from multiprocessing import Queue
 
 from aiohttp import web
 from dotenv import load_dotenv
@@ -67,9 +68,11 @@ def run_agent_in_process(
     channel_name: str,
     uid: int,
     inference_config: InferenceConfig,
+    callback: callable = None,
 ):  # Set up signal forwarding in the child process
-    signal.signal(signal.SIGINT, handle_agent_proc_signal)  # Forward SIGINT
-    signal.signal(signal.SIGTERM, handle_agent_proc_signal)  # Forward SIGTERM
+
+    #signal.signal(signal.SIGINT, handle_agent_proc_signal)  # Forward SIGINT
+    #signal.signal(signal.SIGTERM, handle_agent_proc_signal)  # Forward SIGTERM
     asyncio.run(
         RealtimeKitAgent.setup_and_run_agent(
             engine=RtcEngine(appid=engine_app_id, appcert=engine_app_cert),
@@ -82,9 +85,9 @@ def run_agent_in_process(
             ),
             inference_config=inference_config,
             tools=None,
+            on_message=callback
         )
     )
-
 
 # HTTP Server Routes
 async def start_agent(request):

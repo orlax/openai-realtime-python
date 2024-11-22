@@ -626,14 +626,18 @@ ClientToServerMessages = Union[
 ]
 
 def from_dict(data_class, data):
-    """Recursively convert a dictionary to a dataclass instance."""
-    if is_dataclass(data_class):  # Check if the target class is a dataclass
-        fieldtypes = {f.name: f.type for f in data_class.__dataclass_fields__.values()}
-        return data_class(**{f: from_dict(fieldtypes[f], data[f]) for f in data})
-    elif isinstance(data, list):  # Handle lists of nested dataclass objects
-        return [from_dict(data_class.__args__[0], item) for item in data]
-    else:  # For primitive types (str, int, float, etc.), return the value as-is
-        return data
+    try:
+        """Recursively convert a dictionary to a dataclass instance."""
+        if is_dataclass(data_class):  # Check if the target class is a dataclass
+            fieldtypes = {f.name: f.type for f in data_class.__dataclass_fields__.values()}
+            return data_class(**{f: from_dict(fieldtypes[f], data[f]) for f in data})
+        elif isinstance(data, list):  # Handle lists of nested dataclass objects
+            return [from_dict(data_class.__args__[0], item) for item in data]
+        else:  # For primitive types (str, int, float, etc.), return the value as-is
+            return data
+    except Exception as e:
+        print(f"Error converting to dataclass: {e}")
+        return None
 
 def parse_client_message(unparsed_string: str) -> ClientToServerMessage:
     data = json.loads(unparsed_string)
