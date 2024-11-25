@@ -23,6 +23,7 @@ class Voices(str, Enum):
     Nova_5 = "nova_5"
     Onyx = "onyx"
     Shimmer = "shimmer"
+    Ballad = "ballad"
 
 class AudioFormats(str, Enum):
     PCM16 = "pcm16"
