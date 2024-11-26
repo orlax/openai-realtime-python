@@ -41,9 +41,10 @@ def start_agent(info):
     print(f"Starting agent for SID: {sid}")
     try:
         # Parse and validate the incoming JSON data
-        data = json.loads(info)
-        validated_data = StartAgentRequestBody(**data)
+        print("Info received to starting agent: ", info)
+        validated_data = StartAgentRequestBody(**info)
     except ValidationError as e:
+        print(f"Validation error: {e.errors()}")
         emit("error", {"data": e.errors()})
         return
 
@@ -123,8 +124,7 @@ def start_agent(info):
 def stop_agent(info):
     try:
         # Parse and validate the incoming JSON data
-        data = json.loads(info)
-        validated_data = StopAgentRequestBody(**data)
+        validated_data = StopAgentRequestBody(**info)
         channel_name = validated_data.channel_name
 
         # Stop the thread associated with the channel
