@@ -1,11 +1,15 @@
 import os
 import json
+import random
 from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from threading import Thread
 from dotenv import load_dotenv
 from queue import Queue
+
+#package to generate dynamic Agora tokens
+from .dynamic_key.RtcTokenBuilder2 import *
 
 from .agent import InferenceConfig, RealtimeKitAgent
 from .realtime.struct import ServerVADUpdateParams, Voices
@@ -16,6 +20,14 @@ from .main import run_agent_in_process
 load_dotenv(override=True)
 app_id = os.environ.get("AGORA_APP_ID")
 app_cert = os.environ.get("AGORA_APP_CERT")
+
+#agora token expiration times
+token_expiration_in_seconds = 3600
+privilege_expiration_in_seconds = 3600
+join_channel_privilege_expiration_in_seconds = 3600
+pub_audio_privilege_expiration_in_seconds = 3600
+pub_video_privilege_expiration_in_seconds = 3600
+pub_data_stream_privilege_expiration_in_seconds = 3600
 
 # Initialize Flask and Flask-SocketIO
 app = Flask(__name__)
@@ -33,7 +45,17 @@ def index():
 def handle_connect():
     sid = request.sid
     print(f"Client connected: {sid}")
-    emit('welcome', {'data': 'Hello world'})
+
+    #when a client connects we want to send a channel, uid and token
+    #to the client so that they can join the Agora channel
+    #channel and uid should be random?
+    channel_name = sid
+    uid = random.randint(100000, 999999)
+    token = token = RtcTokenBuilder.build_token_with_uid_and_privilege(
+        app_id, app_cert, channel_name, uid, token_expiration_in_seconds,
+        join_channel_privilege_expiration_in_seconds, pub_audio_privilege_expiration_in_seconds, pub_video_privilege_expiration_in_seconds, pub_data_stream_privilege_expiration_in_seconds)
+
+    emit('welcome', {'channel': channel_name, 'uid': uid, 'token': token})
 
 @socketio.on('start_agent')
 def start_agent(info):
