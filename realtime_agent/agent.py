@@ -113,9 +113,10 @@ class RealtimeKitAgent:
 
                 start_session_message = await anext(connection.listen())
                 # assert isinstance(start_session_message, messages.StartSession)
-                logger.info(
-                    f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
-                )
+                logger.info("Start Session Message: "+ str(start_session_message))
+                #logger.info(
+                #   f"Session started: {start_session_message.session.id} model: {start_session_message.session.model}"
+                #)
 
                 agent = cls(
                     connection=connection,
