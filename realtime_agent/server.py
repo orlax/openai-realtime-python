@@ -178,7 +178,7 @@ def get_cpu_usage():
     """
     try:
         # Run the 'top' command on Linux
-        result = subprocess.run(['top', '-b', '-n', '1'], stdout=subprocess.PIPE, text=True)
+        result = subprocess.run(['/usr/bin/top', '-b', '-n', '1'], stdout=subprocess.PIPE, text=True)
         output = result.stdout
 
         # Find the line with CPU usage information
