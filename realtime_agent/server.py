@@ -196,21 +196,24 @@ def get_cpu_usage():
         print(f"Error running 'top' command: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/restart', methods=['GET'])
+@app.route('/restart', methods=['POST'])
 def restart_service():
     """
-    Run the 'sudo service realtime_agent restart' command.
+    Run the restart_realtime_agent.sh script to restart the service.
     """
     try:
-        # Run the restart command
-        result = subprocess.run(['sudo', 'service', 'realtime_agent', 'restart'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Path to the bash script
+        script_path = os.path.join(os.path.dirname(__file__), 'restart_realtime_agent.sh')
+
+        # Run the bash script
+        result = subprocess.run([script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
         if result.returncode == 0:
             return jsonify({"status": "success", "output": result.stdout}), 200
         else:
             return jsonify({"status": "error", "output": result.stderr}), 500
     except Exception as e:
-        print(f"Error restarting service: {e}")
+        print(f"Error running restart script: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
