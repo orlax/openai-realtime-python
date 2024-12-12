@@ -177,19 +177,19 @@ def get_cpu_usage():
     Run the 'top' command and return only the CPU usage percentage.
     """
     try:
-        # Run the 'top'
-        result = subprocess.run(['/usr/bin/top', '-l', '1'], stdout=subprocess.PIPE, text=True)
+        # Run the 'top' command on Linux
+        result = subprocess.run(['top', '-b', '-n', '1'], stdout=subprocess.PIPE, text=True)
         output = result.stdout
 
         # Find the line with CPU usage information
         lines = output.splitlines()
-        cpu_line = next((line for line in lines if "CPU usage" in line), None)
+        cpu_line = next((line for line in lines if "Cpu(s):" in line), None)
 
         if cpu_line:
             # Extract the percentage of CPU usage for user space
-            # Example line: "CPU usage: 8.39% user, 4.55% sys, 87.06% idle"
-            user_cpu_percentage = cpu_line.split(",")[0].split(":")[1].strip()
-            return jsonify({"status": "success", "cpu_usage": user_cpu_percentage}), 200
+            # Example line: "Cpu(s):  8.4%us,  4.5%sy, 87.1%id, ..."
+            cpu_usage = cpu_line.split(",")[0].split(":")[1].strip()
+            return jsonify({"status": "success", "cpu_usage": cpu_usage}), 200
         else:
             return jsonify({"status": "error", "message": "CPU usage info not found"}), 500
     except Exception as e:
