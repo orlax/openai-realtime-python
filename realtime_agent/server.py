@@ -177,8 +177,8 @@ def get_cpu_usage():
     Run the 'top' command and return only the CPU usage percentage.
     """
     try:
-        # Run the 'top' command on macOS
-        result = subprocess.run(['top', '-l', '1'], stdout=subprocess.PIPE, text=True)
+        # Run the 'top'
+        result = subprocess.run(['/usr/bin/top', '-l', '1'], stdout=subprocess.PIPE, text=True)
         output = result.stdout
 
         # Find the line with CPU usage information
