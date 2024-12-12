@@ -1,7 +1,9 @@
 import os
+import subprocess
 import json
 import random
-from flask import Flask, request
+from flask import Flask, request, jsonify
+
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from threading import Thread
@@ -167,6 +169,49 @@ def stop_agent(info):
 def handle_ping(info):
     sid = request.sid
     socketio.emit('pong', to=sid)
+
+
+@app.route('/status', methods=['GET'])
+def get_cpu_usage():
+    """
+    Run the 'top' command and return only the CPU usage percentage.
+    """
+    try:
+        # Run the 'top' command on macOS
+        result = subprocess.run(['top', '-l', '1'], stdout=subprocess.PIPE, text=True)
+        output = result.stdout
+
+        # Find the line with CPU usage information
+        lines = output.splitlines()
+        cpu_line = next((line for line in lines if "CPU usage" in line), None)
+
+        if cpu_line:
+            # Extract the percentage of CPU usage for user space
+            # Example line: "CPU usage: 8.39% user, 4.55% sys, 87.06% idle"
+            user_cpu_percentage = cpu_line.split(",")[0].split(":")[1].strip()
+            return jsonify({"status": "success", "cpu_usage": user_cpu_percentage}), 200
+        else:
+            return jsonify({"status": "error", "message": "CPU usage info not found"}), 500
+    except Exception as e:
+        print(f"Error running 'top' command: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/restart', methods=['GET'])
+def restart_service():
+    """
+    Run the 'sudo service realtime_agent restart' command.
+    """
+    try:
+        # Run the restart command
+        result = subprocess.run(['sudo', 'service', 'realtime_agent', 'restart'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            return jsonify({"status": "success", "output": result.stdout}), 200
+        else:
+            return jsonify({"status": "error", "output": result.stderr}), 500
+    except Exception as e:
+        print(f"Error restarting service: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=3000)
