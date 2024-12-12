@@ -196,7 +196,7 @@ def get_cpu_usage():
         print(f"Error running 'top' command: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/restart', methods=['POST'])
+@app.route('/restart', methods=['GET'])
 def restart_service():
     """
     Run the restart_realtime_agent.sh script to restart the service.
