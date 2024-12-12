@@ -6,6 +6,7 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from threading import Thread
 from dotenv import load_dotenv
+from multiprocessing import Process
 from queue import Queue
 
 #package to generate dynamic Agora tokens
@@ -35,6 +36,28 @@ CORS(app)
 socketio = SocketIO(app, debug=True, cors_allowed_origins="*", async_mode='eventlet')
 
 active_channels = {}
+
+#A GLOBAL queue to store messages from the agent
+message_queue = Queue()
+def emit_messages_from_queue():
+    """
+    Continuously monitor the queue and emit messages to clients.
+    """
+    while True:
+        try:
+            # Get a message from the queue
+            message_data = message_queue.get()
+            if message_data is None:
+                print("Message Data is None, this Thread is gonna stop")
+                break  # Stop the thread if a None value is received
+            print("Message data: ", message_data)
+            sid = message_data['sid']
+            message = message_data['message']
+            print(f"Emitting message to SID {sid}: {message}")
+            socketio.emit('agent_message', message, to=sid)
+            socketio.sleep(0)  # Yield control to the event loop
+        except Exception as e:
+            print(f"Error emitting message from queue: {e}")
 
 
 @app.route('/')
@@ -100,12 +123,14 @@ def start_agent(info):
         ),
     )
 
+    """
     # Create a thread-safe queue for communication
     message_queue = Queue()
 
     # Define a callback to emit messages back to the client
     def agent_callback(message):
         message_queue.put(message)
+    
 
     def emit_messages_from_queue():
         while True:
@@ -118,8 +143,46 @@ def start_agent(info):
                 socketio.sleep(0)  # Yield control to the event loop
             except Exception as e:
                 print(f"Error emitting message: {e}")
+    """ 
+
+    # Define the callback function at the top level
+    def agent_callback(message, sid):
+        try:
+            if message is None:
+                return
+            print("Delta Message: ", sid, message.delta)
+            message_queue.put({'sid': sid, 'message': message.delta})
+        except Exception as e:
+            print(f"Error adding message to queue: {e}")
+
+    #define a function to run the agent:
+    def run_agent():
+        try:
+            run_agent_in_process(app_id, app_cert, channel_name, uid, inference_config, agent_callback)
+        finally:
+            # Cleanup after the process finishes
+            active_channels.pop(channel_name, None)
+            message_queue.put(None)  # Signal the queue consumer to stop
+            print(f"Agent stopped for channel: {channel_name}")
 
 
+    #Run the agent using a Process with no parameters.
+    process = Thread(target=run_agent)
+    
+    try:
+        emit('agent_started', {'data': 'Agent is starting'})
+        active_channels[channel_name] = {
+            "thread": process,
+            "sid": sid,
+            #"queue": message_queue
+        }
+        process.start()
+    except Exception as e:
+        print(f"Error starting agent: {e}")
+        emit('error', {'data': 'Error starting agent'})
+        return
+    
+    """
     # Run the agent in a background thread
     def run_agent():
         try:
@@ -133,14 +196,11 @@ def start_agent(info):
     thread = Thread(target=run_agent, daemon=True)
     thread.start()
 
-    emit('agent_started', {'data': 'Agent is starting'})
+    
+    """
+    
 
-    active_channels[channel_name] = {
-        "thread": thread,
-        "queue": message_queue
-    }
-
-    socketio.start_background_task(emit_messages_from_queue)
+    #socketio.start_background_task(emit_messages_from_queue)
 
 @socketio.on('stop_agent')
 def stop_agent(info):
@@ -150,10 +210,11 @@ def stop_agent(info):
         channel_name = validated_data.channel_name
 
         # Stop the thread associated with the channel
-        thread = active_channels.pop(channel_name, None)
-        if thread and thread.is_alive():
+        process = active_channels.pop(channel_name, None)
+        if process and process["thread"].is_alive():
             # Custom logic to stop run_agent_in_process gracefully if needed
             print(f"Stopping agent for channel: {channel_name}")
+            process["thread"].terminate()
             emit("agent_stopped", {"data": f"Agent in channel {channel_name} stopped."})
         else:
             emit("error", {"data": f"No active agent for channel: {channel_name}"})
@@ -170,3 +231,4 @@ def handle_ping(info):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=3000)
+    socketio.start_background_task(emit_messages_from_queue)

@@ -79,9 +79,10 @@ class RealtimeKitAgent:
         inference_config: InferenceConfig,
         tools: ToolContext | None,
         on_message: Any = None,  # Accept on_message callback
+        sid: str = None,  # the SID to return the message callback to
     ) -> None:
         
-
+        print("Setting up and running agent class")
         channel = engine.create_channel(options)
         await channel.connect()
 
@@ -122,8 +123,10 @@ class RealtimeKitAgent:
                     connection=connection,
                     tools=tools,
                     channel=channel,
-                    on_message=on_message
+                    on_message=on_message, 
+                    sid=sid
                 )
+                print("agent is runnning")
                 await agent.run()
 
         finally:
@@ -137,6 +140,7 @@ class RealtimeKitAgent:
         tools: ToolContext | None,
         channel: Channel,
         on_message: Any = None,  # Accept on_message callback
+        sid: str = None,  # the sid to return the message to
     ) -> None:
         self.connection = connection
         self.tools = tools
@@ -145,6 +149,7 @@ class RealtimeKitAgent:
         self.subscribe_user = None
         self.write_pcm = os.environ.get("WRITE_AGENT_PCM", "false") == "true"
         self.on_message = on_message  # Store the callback
+        self.sid = sid
 
          # Bind queues to the current event loop
         current_loop = asyncio.get_event_loop()
@@ -276,7 +281,7 @@ class RealtimeKitAgent:
                         )
                     ))
                     if(self.on_message is not None):
-                        self.on_message(message) #RELAY TRANSCRIPTION TO CALLBACK
+                        self.on_message(message, self.sid) #RELAY TRANSCRIPTION TO CALLBACK
 
                 case ResponseAudioTranscriptDone():
                     logger.info(f"Text message done: {message=}")

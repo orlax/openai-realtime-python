@@ -69,10 +69,12 @@ def run_agent_in_process(
     uid: int,
     inference_config: InferenceConfig,
     callback: callable = None,
+    sid: str = None,
 ):  # Set up signal forwarding in the child process
 
     #signal.signal(signal.SIGINT, handle_agent_proc_signal)  # Forward SIGINT
     #signal.signal(signal.SIGTERM, handle_agent_proc_signal)  # Forward SIGTERM
+    print("run_agent_in_process")
     asyncio.run(
         RealtimeKitAgent.setup_and_run_agent(
             engine=RtcEngine(appid=engine_app_id, appcert=engine_app_cert),
@@ -85,7 +87,8 @@ def run_agent_in_process(
             ),
             inference_config=inference_config,
             tools=None,
-            on_message=callback
+            on_message=callback,
+            sid=sid,
         )
     )
 
